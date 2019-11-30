@@ -107,3 +107,20 @@ See `examples/k8sh_extensions` for some examples of what extensions can do.
 
 ## Todo
 * Get the standard `kubectl` tab completion to work with aliases.
+
+## STRATIS Extensions
+* Looks for a `k8sh_extensions` file in same directory as k8sh in addition to home directory.
+* Put .k8ct and .k8ns files in your gitops repo then cd'ing into the dir will let you run `ct` and `ns` to set context automatically.
+
+### Setup .k8ct and .k8ns files:
+
+```
+gitops/prod-cluster$ echo -n "prod-cluster" > .k8ct
+gitops/prod-cluster$ cd my-product
+gitops/prod-cluster/my-product$ echo -n "my-product" > .k8ns
+```
+
+![k8sh Screenshot](/screenshot2.png?raw=true)
+
+
+
