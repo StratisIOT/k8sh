@@ -1,5 +1,18 @@
 #!/usr/bin/env bash
 
+# Get this script's directory:
+# From: https://gist.github.com/TheMengzor/968e5ea87e99d9c41782
+
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
+  K8SH_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$K8SH_DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+done
+K8SH_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+export K8SH_DIR
+
+
 ct() {
   if [ -z "$1" ]; then
     local contexts=$(k config get-contexts -o=name | sort -n)
@@ -35,6 +48,10 @@ _ns_completions()
 export -f _ns_completions
 
 reloadExtensions() {
+  if [ -e "${K8SH_DIR}/k8sh_extensions" ]; then
+    echo "Sourcing in ${K8SH_DIR}/k8sh_extensions..."
+    source "${K8SH_DIR}/k8sh_extensions"
+  fi
   if [ -e ~/.k8sh_extensions ]; then
     echo "Sourcing in ~/.k8sh_extensions..."
     source ~/.k8sh_extensions
@@ -91,6 +108,9 @@ k8sh_init() {
   if [ -e ~/.bash_profile ]; then
     echo "Sourcing in ~/.bash_profile..."
     source ~/.bash_profile
+  elif [ -e ~/.bashrc ]; then
+    echo "Sourcing in ~/.bashrc..."
+    source ~/.bashrc
   fi
   echo "Gathering current kubectl state..."
   export KUBECTL_CONTEXT=$(kubectl config current-context)
@@ -102,6 +122,7 @@ k8sh_init() {
 
   # Common actions
   alias describe="k describe"
+  alias desc="k describe"
   alias get="k get"
   alias create="k create"
   alias apply="k apply"
@@ -118,7 +139,7 @@ k8sh_init() {
   # persistentvolumeclaims (pvc), resourcequotas (quota),
   # namespaces (ns), serviceaccounts (sa), ingresses (ing),
   # horizontalpodautoscalers (hpa), daemonsets (ds), configmaps,
-  # componentstatuses (cs), endpoints (ep), and secrets.
+  # componentstatuses (cs), endpoints (ep), secrets, and statefulsets (sts).
   alias pods="get pods"
   alias services="get svc"
   alias deployments="get deployments"
@@ -139,6 +160,11 @@ k8sh_init() {
   alias ing="get ing"
   alias configmaps="get configmaps"
   alias secrets="get secrets"
+  alias statefulsets="get sts"
+  alias sts="get sts"
+  alias crd="get crd"
+  alias daemonsets="get ds"
+  alias ds="get ds"
 
   complete -F _ns_completions ns
   complete -F _ct_completions ct
@@ -161,8 +187,8 @@ k8sh_init() {
   export PS1="($PS_CONTEXT_COLOR\$KUBECTL_CONTEXT$PS_RESTORE/$PS_NAMESPACE_COLOR\$KUBECTL_NAMESPACE$PS_RESTORE) \W ${PS_LPURPLE}\$${PS_RESTORE} "
 
   echo ""
-  echo -e "Context: $CONTEXT_COLOR$KUBECTL_CONTEXT$RESTORE"
-  echo -e "Namespace: $NAMESPACE_COLOR$KUBECTL_NAMESPACE$RESTORE"
+  echo -e "Context: ${CONTEXT_COLOR}${KUBECTL_CONTEXT}${RESTORE}"
+  echo -e "Namespace: ${NAMESPACE_COLOR}${KUBECTL_NAMESPACE}${RESTORE}"
 }
 export -f k8sh_init
 

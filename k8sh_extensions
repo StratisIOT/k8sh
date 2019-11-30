@@ -1,0 +1,125 @@
+
+# Displays all nodes in the cluster including kubernetes version info
+alias nodes="k get nodes -owide"
+
+
+# Runs a busybox container (optionally selecting the a specific node to run on)
+# and shells into it.
+busybox() {
+  delete po/busybox
+  OVERRIDE_PARAM=""
+  if [[ $1 ]]; then
+    echo "Restricting pod to node: $1"
+    OVERRIDE_PARAM="{ \"spec\": { \"nodeSelector\": { \"kubernetes.io/hostname\": \"$1\" } } }"
+  fi
+  k run -i --tty busybox --image=busybox --restart=Never --overrides="$OVERRIDE_PARAM" -- sh
+}
+
+# Determines the context from a .k8ct file if one exists in the current, parent, or
+# grandparent directory.
+dir_context() {
+  local result=""
+  if [[ -f .k8ct ]] || [[ -f ../.k8ct ]] || [[ -f ../../.k8ct ]] ; then
+    if [[ -f .k8ct ]] ; then
+      result=$(< .k8ct)
+    elif  [[ -f ../.k8ct ]] ; then
+      result=$(< ../.k8ct)
+    elif [[ -f ../../.k8ct ]] ; then
+      result=$(< ../../.k8ct)
+    fi
+  fi
+  echo -n $result
+}
+
+# Determines the namespace from a .k8ns file if one exists in the current, parent, or
+# grandparent directory.
+dir_namespace() {
+  local result=""
+  if [[ -f .k8ns ]] || [[ -f ../.k8ns ]] || [[ -f ../../.k8ns ]] ; then
+    if [[ -f .k8ns ]] ; then
+      result=$(< .k8ns)
+    elif [[ -f ../.k8ns ]] ; then
+      result=$(< ../.k8ns)
+    elif [[ -f ../../.k8ns ]] ; then
+      result=$(< ../../.k8ns)
+    fi
+  fi
+  echo -n $result
+}
+
+# Change directory function delegates to the system cd command and then checks the
+# the context and namespace for the new directory and emits warnings if needed.
+cd () {
+  command cd "$@" || return
+
+  local dir_ct=$(dir_context)
+  if [[ -n "$dir_ct" ]] ; then
+    if [[ "$dir_ct" != "$KUBECTL_CONTEXT" ]] ; then
+      echo
+      echo -e "${LRED}Warning:${RESTORE} Current context ${CONTEXT_COLOR}${KUBECTL_CONTEXT}${RESTORE} doesn't match this directory context ${CONTEXT_COLOR}${dir_ct}${RESTORE}!"
+      echo "Type 'ct' to change the current context."
+      echo
+    fi
+  fi
+  local dir_ns=$(dir_namespace)
+  if [[ -n "$dir_ns" ]] && [[ "$dir_ns" != "$KUBECTL_NAMESPACE" ]] ; then
+    echo
+    echo -e "${LRED}Warning:${RESTORE} Current namespace ${NAMESPACE_COLOR}${KUBECTL_NAMESPACE}${RESTORE} doesn't match this directory namespace ${NAMESPACE_COLOR}${dir_ns}${RESTORE}!"
+    echo "Type 'ns' to change the current namespace."
+    echo
+  fi
+}
+export -f cd
+
+# Output or change the KUBECTL_CONTEXT env var based on current directory and .k8ct files.
+ct() {
+  if [ -z "$1" ]; then
+    local dir_ct=$(dir_context)
+    if [[ -n "$dir_ct" ]] ; then
+      export KUBECTL_CONTEXT=$dir_ct
+      echo -e "Selected context: ${CONTEXT_COLOR}${dir_ct}${RESTORE}"
+    else
+      echo $KUBECTL_CONTEXT
+    fi
+    return
+  fi
+  export KUBECTL_CONTEXT=$1
+
+  local dir_ct=$(dir_context)
+  if [[ -n "$dir_ct" ]] ; then
+    if [[ "$dir_ct" != "$KUBECTL_CONTEXT" ]] ; then
+      echo
+      echo -e "${LRED}Warning:${RESTORE} Current context ${CONTEXT_COLOR}${KUBECTL_CONTEXT}${RESTORE} doesn't match this directory context ${CONTEXT_COLOR}${dir_ct}${RESTORE}!"
+      echo "Type 'ct' to change the current context."
+      echo
+    fi
+  fi
+}
+export -f ct
+
+# Output or change the KUBECTL_NAMESPACE env var based on current directory and .k8ns files.
+ns() {
+  if [ -z "$1" ]; then
+    local dir_ns=$(dir_namespace)
+    if [[ -n "$dir_ns" ]] ; then
+      export KUBECTL_NAMESPACE=$dir_ns 
+      echo -e "Selected namespace: ${NAMESPACE_COLOR}${dir_ns}${RESTORE}"
+    else
+      echo $KUBECTL_NAMESPACE
+    fi
+    return
+  fi
+  export KUBECTL_NAMESPACE=$1
+
+  local dir_ns=$(dir_namespace)
+  if [[ -n "$dir_ns" ]] ; then
+    if [[ "$dir_ns" != "$KUBECTL_NAMESPACE" ]] ; then
+      echo
+      echo -e "${LRED}Warning:${RESTORE} Current namespace ${NAMESPACE_COLOR}${KUBECTL_NAMESPACE}${RESTORE} doesn't match this directory namespace ${NAMESPACE_COLOR}${dir_ns}${RESTORE}!"
+      echo "Type 'ns' to change the current namespace."
+      echo
+    fi
+  fi
+}
+export -f ns
+
